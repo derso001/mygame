@@ -35,11 +35,17 @@ ball_speed = 5.0
 ball_hp = 100
 score = 0
 
+enemy_type = [{"name": "loh", "icon": "enemy.png", "hp": 10, "size": 0.3, "speed": 4.0, "damage": 10, "punch": 25}, 
+                {"name": "tank", "icon": "enemy.png", "hp": 25, "size": 0.4, "speed": 2.0, "damage": 25, "punch": 40}]
 
-def create_enemy():
-    enemy_type = [{"name": "loh", "icon": "enemy.png", "hp": 10, "size": 0.3, "speed": 4.0, "damage": 10, "punch": 20}, 
-                {"name": "tank", "icon": "enemy.png", "hp": 25, "size": 0.4, "speed": 2.0, "damage": 25, "punch": 30}]
-    
+enemy_updates = 1.2
+
+bonus_type = [{"name": "heal", "icon": "heal.png", "size": 0.25, "speed": 4.0, "exp": 0, "damage": 25},
+                {"name": "xp", "icon": "bonus.png", "size": 0.2, "speed": 4.0, "exp": 15, "damage": 0}, 
+                {"name": "xp", "icon": "bonus.png", "size": 0.3, "speed": 4.0, "exp": 30, "damage": 0}]
+
+
+def create_enemy(enemy_type):
     enemy_stats = choice(enemy_type)
     enemy_icon = pygame.image.load(enemy_stats["icon"])
     enemy = pygame.transform.scale(enemy_icon, (int(enemy_icon.get_width() * enemy_stats["size"]), int(enemy_icon.get_height() * enemy_stats["size"])))
@@ -47,11 +53,12 @@ def create_enemy():
     return [enemy, enemy_rect, enemy_stats]
 
 
-def create_bonus():
-    bonus_type = [{"name": "heal", "icon": "heal.png", "size": 0.25, "speed": 4.0, "exp": 0, "damage": 25},
-                  {"name": "xp", "icon": "bonus.png", "size": 0.2, "speed": 4.0, "exp": 15, "damage": 0}, 
-                    {"name": "xp", "icon": "bonus.png", "size": 0.3, "speed": 4.0, "exp": 30, "damage": 0}]
-    
+# def explosion_enemy(enemy):
+#     explosion_icon = pygame.transform.scale(pygame.image.load("explosion.png"), (75, 50)) 
+#     enemy[0] = explosion_icon
+
+
+def create_bonus(bonus_type):
     bonus_stats = choice(bonus_type)
     bonus_icon = pygame.image.load(bonus_stats["icon"])
     bonus = pygame.transform.scale(bonus_icon, (int(bonus_icon.get_width() * bonus_stats["size"]), int(bonus_icon.get_height() * bonus_stats["size"])))
@@ -82,6 +89,9 @@ pygame.time.set_timer(CREATE_BONUS, 2000)
 CHANGE_IMG = pygame.USEREVENT + 3
 pygame.time.set_timer(CHANGE_IMG, 100)
 
+CHANGE_DELICACY = pygame.USEREVENT + 4
+pygame.time.set_timer(CHANGE_DELICACY, 1000 * 30)
+
 enemys = []
 bonuses = []
 
@@ -89,6 +99,7 @@ img_index = 1
 
 is_working = True
 
+enemy_level = 1
 
 while is_working:
     FPS.tick(60)
@@ -98,16 +109,28 @@ while is_working:
             is_working = False
 
         if event.type == CREATE_ENEMY and len(enemys) < 20:
-            enemys.append(create_enemy()) 
+            enemys.append(create_enemy(enemy_type)) 
 
         if event.type == CREATE_BONUS and len(bonuses) < 5:
-            bonuses.append(create_bonus()) 
+            bonuses.append(create_bonus(bonus_type)) 
 
         if event.type == CHANGE_IMG:
             img_index += 1
             if img_index == len(ball_imgs):
                 img_index = 0
             ball = pygame.transform.scale(ball_imgs[img_index], (int(ball_imgs[img_index].get_width() * 0.5), int(ball_imgs[img_index].get_height() * 0.5)))
+
+        if event.type == CHANGE_DELICACY:
+            enemy_level += 1
+            it = randint(1,5)
+            for enemy in enemy_type:
+                if it in [1,2]:
+                    enemy["speed"] = enemy["speed"] * enemy_updates
+                elif it == 2:
+                    enemy["punch"] = enemy["punch"] * enemy_updates
+                else:
+                    enemy["damage"] = enemy["damage"] * enemy_updates
+
 
     bgX -= bg_speed
     bgX2 -= bg_speed
@@ -131,24 +154,28 @@ while is_working:
             enemys.remove(enemy)
 
         if ball_rect.colliderect(enemy[1]):
+
+            ball_hp -= enemy[2]["damage"]
+
             if ball_rect.x < enemy[1].x and ball_rect.y < enemy[1].y:
                 # столкновение с левой верхней стороны
                 ball_rect = ball_rect.move(-enemy[2]["punch"], -enemy[2]["punch"])
+                enemys.remove(enemy)
 
             elif ball_rect.x < enemy[1].x and ball_rect.y > enemy[1].y:
                 # столкновение с левой нижней стороны
                 ball_rect = ball_rect.move(-enemy[2]["punch"], enemy[2]["punch"])
+                enemys.remove(enemy)
 
             elif ball_rect.x > enemy[1].x and ball_rect.y < enemy[1].y:
                 # столкновение с правой верхней стороны
                 ball_rect = ball_rect.move(enemy[2]["punch"], -enemy[2]["punch"])
+                enemys.remove(enemy)
 
             elif ball_rect.x > enemy[1].x and ball_rect.y > enemy[1].y:
                 # столкновение с правой нижней стороны
                 ball_rect = ball_rect.move(-enemy[2]["punch"], enemy[2]["punch"])
-            
-            ball_hp -= enemy[2]["damage"]
-
+                enemys.remove(enemy)
 
     for bonus in bonuses:
         main_wind.blit(bonus[0], bonus[1])
@@ -168,7 +195,8 @@ while is_working:
             bonuses.remove(bonus)
 
     draw_text(main_wind, f"HP: {int(ball_hp)}", PURPLE, 75, 5, 18)
-    draw_text(main_wind, f"Score: {score}", PURPLE, 200, 5, 18)
+    draw_text(main_wind, f"Score: {score}", PURPLE, 185, 5, 18)
+    draw_text(main_wind, f"Enemy level: {enemy_level}", PURPLE, 325, 5, 18)
 
     if ball_hp <= 0:
         draw_text(main_wind, f"GAME OWER", RED, 400, 260, 40)
