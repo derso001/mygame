@@ -1,4 +1,5 @@
 import pygame
+from os import listdir
 from pygame.constants import QUIT, K_w, K_s, K_d, K_a
 from random import randint, choice
 
@@ -7,7 +8,7 @@ pygame.init()
 
 FPS = pygame.time.Clock()
 
-width = 800
+width = 900
 heigth = 600
 screen = width, heigth
 
@@ -26,8 +27,9 @@ def rand_color():
 
 main_wind = pygame.display.set_mode(screen)
 
-ball = pygame.Surface((25, 25))
-ball.fill(rand_color())
+IMAGE_PATH = "goose"
+ball_imgs = [pygame.image.load(f"{IMAGE_PATH}/{file}").convert_alpha() for file in listdir(IMAGE_PATH)]
+ball = pygame.transform.scale(ball_imgs[0], (int(ball_imgs[0].get_width() * 0.5), int(ball_imgs[0].get_height() * 0.5)))
 ball_rect = ball.get_rect()
 ball_speed = 5.0
 ball_hp = 100
@@ -35,25 +37,25 @@ score = 0
 
 
 def create_enemy():
-    enemy_type = [{"name": "loh", "hp": 10, "color": RED, "size": (15, 15), "speed": 4.0, "damage": 10, "punch": 20}, 
-                {"name": "tank", "hp": 25, "color": RUBY, "size": (20, 20), "speed": 2.0, "damage": 25, "punch": 30}]
+    enemy_type = [{"name": "loh", "icon": "enemy.png", "hp": 10, "size": 0.3, "speed": 4.0, "damage": 10, "punch": 20}, 
+                {"name": "tank", "icon": "enemy.png", "hp": 25, "size": 0.4, "speed": 2.0, "damage": 25, "punch": 30}]
     
     enemy_stats = choice(enemy_type)
-    enemy = pygame.Surface(enemy_stats["size"])
-    enemy.fill(enemy_stats["color"])
-    enemy_rect = pygame.Rect(width, randint(0, heigth), *enemy.get_size())
+    enemy_icon = pygame.image.load(enemy_stats["icon"])
+    enemy = pygame.transform.scale(enemy_icon, (int(enemy_icon.get_width() * enemy_stats["size"]), int(enemy_icon.get_height() * enemy_stats["size"])))
+    enemy_rect = pygame.Rect(width, randint(10, heigth - 10), *enemy.get_size())
     return [enemy, enemy_rect, enemy_stats]
 
 
 def create_bonus():
-    bonus_type = [{"name": "heal", "color": GREEN, "size": (16, 16), "speed": 4.0, "exp": 0, "damage": 25},
-                  {"name": "xp", "color": YELLOW, "size": (10, 10), "speed": 4.0, "exp": 15, "damage": 0}, 
-                    {"name": "xp", "color": GOLDEN, "size": (14, 14), "speed": 4.0, "exp": 30, "damage": 0}]
+    bonus_type = [{"name": "heal", "icon": "heal.png", "size": 0.25, "speed": 4.0, "exp": 0, "damage": 25},
+                  {"name": "xp", "icon": "bonus.png", "size": 0.2, "speed": 4.0, "exp": 15, "damage": 0}, 
+                    {"name": "xp", "icon": "bonus.png", "size": 0.3, "speed": 4.0, "exp": 30, "damage": 0}]
     
     bonus_stats = choice(bonus_type)
-    bonus = pygame.Surface(bonus_stats["size"])
-    bonus.fill(bonus_stats["color"])
-    bonus_rect = pygame.Rect(randint(0, width), 0, *bonus.get_size())
+    bonus_icon = pygame.image.load(bonus_stats["icon"])
+    bonus = pygame.transform.scale(bonus_icon, (int(bonus_icon.get_width() * bonus_stats["size"]), int(bonus_icon.get_height() * bonus_stats["size"])))
+    bonus_rect = pygame.Rect(randint(75, width - 75), 0, *bonus.get_size())
     return [bonus, bonus_rect, bonus_stats]
 
 
@@ -66,15 +68,24 @@ def draw_text(surf, text, color, x, y, size):
     text_rect.midtop = (x, y)
     surf.blit(text_surface, text_rect)
 
+bg = pygame.transform.scale(pygame.image.load("background.png").convert(), screen) 
+bgX = 0
+bgX2 = bg.get_width()
+bg_speed = 1
 
 CREATE_ENEMY = pygame.USEREVENT + 1
-pygame.time.set_timer(CREATE_ENEMY, 500)
+pygame.time.set_timer(CREATE_ENEMY, 700)
 
 CREATE_BONUS = pygame.USEREVENT + 2
 pygame.time.set_timer(CREATE_BONUS, 2000)
 
+CHANGE_IMG = pygame.USEREVENT + 3
+pygame.time.set_timer(CHANGE_IMG, 100)
+
 enemys = []
 bonuses = []
+
+img_index = 1
 
 is_working = True
 
@@ -92,7 +103,24 @@ while is_working:
         if event.type == CREATE_BONUS and len(bonuses) < 5:
             bonuses.append(create_bonus()) 
 
-    main_wind.fill(FACK)
+        if event.type == CHANGE_IMG:
+            img_index += 1
+            if img_index == len(ball_imgs):
+                img_index = 0
+            ball = pygame.transform.scale(ball_imgs[img_index], (int(ball_imgs[img_index].get_width() * 0.5), int(ball_imgs[img_index].get_height() * 0.5)))
+
+    bgX -= bg_speed
+    bgX2 -= bg_speed
+
+    if bgX < -bg.get_width():
+        bgX = bg.get_width()
+
+    if bgX2 < -bg.get_width():
+        bgX2 = bg.get_width() 
+
+    main_wind.blit(bg, (bgX,0))
+    main_wind.blit(bg, (bgX2,0))
+
     main_wind.blit(ball, ball_rect)
 
     for enemy in enemys:
